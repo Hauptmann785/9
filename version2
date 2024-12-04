@@ -1,0 +1,150 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
+namespace AirlineFleet
+{
+    // Базовый класс для самолета
+    public abstract class Airplane
+    {
+        public int Capacity { get; }
+        public int RangeKm { get; }
+        public int FuelConsumption { get; }
+
+        protected Airplane(int capacity, int rangeKm, int fuelConsumption)
+        {
+            Capacity = capacity;
+            RangeKm = rangeKm;
+            FuelConsumption = fuelConsumption;
+        }
+
+        public override string ToString()
+        {
+            return $"{GetType().Name}: Вместимость: {Capacity}, Дальность: {RangeKm} км, Потребление топлива: {FuelConsumption} л/100 км";
+        }
+    }
+
+    // Пассажирский самолет
+    public class PassengerPlane : Airplane
+    {
+        public PassengerPlane(int capacity, int rangeKm, int fuelConsumption) 
+            : base(capacity, rangeKm, fuelConsumption) { }
+    }
+
+    // Грузовой самолет
+    public class CargoPlane : Airplane
+    {
+        public CargoPlane(int capacity, int rangeKm, int fuelConsumption) 
+            : base(capacity, rangeKm, fuelConsumption) { }
+    }
+
+    // Частный самолет
+    public class PrivateJet : Airplane
+    {
+        public PrivateJet(int capacity, int rangeKm, int fuelConsumption) 
+            : base(capacity, rangeKm, fuelConsumption) { }
+    }
+}
+namespace AirlineFleet
+{
+    public static class AirplaneFactory
+    {
+        // Метод для создания самолетов по типу
+        public static Airplane CreateAirplane(string type, int capacity, int rangeKm, int fuelConsumption)
+        {
+            return type.ToLower() switch
+            {
+                "passenger" => new PassengerPlane(capacity, rangeKm, fuelConsumption),
+                "cargo" => new CargoPlane(capacity, rangeKm, fuelConsumption),
+                "private" => new PrivateJet(capacity, rangeKm, fuelConsumption),
+                _ => throw new ArgumentException($"Неизвестный тип самолета: {type}")
+            };
+        }
+    }
+}
+namespace AirlineFleet
+{
+    public class FleetBuilder
+    {
+        private readonly List<Airplane> _fleet = new();
+
+        // Добавление самолета в авиапарк
+        public FleetBuilder AddAirplane(Airplane airplane)
+        {
+            _fleet.Add(airplane);
+            return this;
+        }
+
+        // Получение всего авиапарка
+        public List<Airplane> GetFleet()
+        {
+            return _fleet;
+        }
+
+        // Подсчет общей вместимости авиапарка
+        public int GetTotalCapacity()
+        {
+            return _fleet.Sum(plane => plane.Capacity);
+        }
+
+        // Сортировка самолетов по дальности полета
+        public void SortByRange()
+        {
+            _fleet.Sort((a, b) => b.RangeKm.CompareTo(a.RangeKm)); // Сортируем по убыванию дальности
+        }
+
+        // Поиск самолетов по диапазону потребления топлива
+        public List<Airplane> FindByFuelConsumption(int minFuel, int maxFuel)
+        {
+            return _fleet.Where(plane => plane.FuelConsumption >= minFuel && plane.FuelConsumption <= maxFuel).ToList();
+        }
+    }
+}
+using System;
+
+namespace AirlineFleet
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            // Создаем фабрику и билдер
+            FleetBuilder builder = new FleetBuilder();
+
+            // Добавляем самолеты в авиапарк
+            builder.AddAirplane(AirplaneFactory.CreateAirplane("passenger", 200, 5000, 30));
+            builder.AddAirplane(AirplaneFactory.CreateAirplane("cargo", 50000, 4000, 50));
+            builder.AddAirplane(AirplaneFactory.CreateAirplane("private", 10, 6000, 20));
+
+            // Получаем весь авиапарк
+            var fleet = builder.GetFleet();
+
+            // Выводим данные о самолётах
+            Console.WriteLine("Флот самолетов:");
+            foreach (var plane in fleet)
+            {
+                Console.WriteLine(plane);
+            }
+
+            // Подсчет общей вместимости
+            Console.WriteLine($"\nОбщая вместимость: {builder.GetTotalCapacity()} пассажиров/тонн");
+
+            // Сортировка самолетов по дальности полета
+            builder.SortByRange();
+            Console.WriteLine("\nСамолеты, отсортированные по дальности полета:");
+            foreach (var plane in fleet)
+            {
+                Console.WriteLine(plane);
+            }
+
+            // Поиск самолетов с потреблением топлива в заданном диапазоне
+            int minFuel = 25, maxFuel = 40;
+            var filteredPlanes = builder.FindByFuelConsumption(minFuel, maxFuel);
+            Console.WriteLine($"\nСамолеты с потреблением топлива в диапазоне {minFuel}-{maxFuel} л/100 км:");
+            foreach (var plane in filteredPlanes)
+            {
+                Console.WriteLine(plane);
+            }
+        }
+    }
+}
