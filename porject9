@@ -1,0 +1,213 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
+// абстрактный базовый класс для всех типов самолетов. определяет общую структуру и базовые характеристики самолетов
+public abstract class Aircraft
+{
+    //характеристики самолета
+    public int Capacity { get; protected set; }     // Вместимость (пассажиров или грузов)
+    public double FlightRange { get; protected set; }  // Дальность полета в километрах
+    public double FuelConsumption { get; protected set; }  // Расход топлива на 100 км
+
+    // абстрактный метод для получения типа самолета
+    public abstract string GetType();
+
+    // переопределение метода ToString для удобного вывода информации о самолете 
+    public override string ToString()
+    {
+        return $"{GetType()} Aircraft: Capacity={Capacity}, Range={FlightRange}km, Fuel Consumption={FuelConsumption}L/100km";
+    }
+}
+
+// пассажирский самолет 
+public class PassengerAircraft : Aircraft
+{
+    // конструктор с preset параметрами
+    public PassengerAircraft()
+    {
+        Capacity = 180;       // вместимость
+        FlightRange = 5000;   // средняя дальность полета
+        FuelConsumption = 8.5; // средний расход топлива
+    }
+
+    // реализация абстрактного метода для определения типа
+    public override string GetType() => "Passenger";
+}
+
+// грузовой самолет
+public class CargoAircraft : Aircraft
+{
+    public CargoAircraft()
+    {
+        Capacity = 50000;     // высокая грузоподъемность
+        FlightRange = 4000;   // меньшая дальность из-за веса
+        FuelConsumption = 12.0; // высокий расход топлива
+    }
+
+    public override string GetType() => "Cargo";
+}
+
+// частный джет
+public class PrivateAircraft : Aircraft
+{
+    public PrivateAircraft()
+    {
+        Capacity = 10;        // малая вместимость
+        FlightRange = 3000;   // средняя дальность
+        FuelConsumption = 5.5; // низкий расход топлива
+    }
+
+    public override string GetType() => "Private";
+}
+
+// (Factory Method) (интерфейс определяет единый метод создания самолетов)
+public interface IAircraftFactory
+{
+    Aircraft CreateAircraft();
+}
+
+// фабрики для каждого типа самолетов
+public class PassengerAircraftFactory : IAircraftFactory
+{
+    // создание пассажирского самолета
+    public Aircraft CreateAircraft() => new PassengerAircraft();
+}
+
+public class CargoAircraftFactory : IAircraftFactory
+{
+    // грузовой
+    public Aircraft CreateAircraft() => new CargoAircraft();
+}
+
+public class PrivateAircraftFactory : IAircraftFactory
+{
+    // частный
+    public Aircraft CreateAircraft() => new PrivateAircraft();
+}
+
+// строитель флота (builder) - паттерн для поэтапного создания сложного объекта
+public class FleetBuilder
+{
+    // Внутренний список для хранения самолетов
+    private List<Aircraft> _fleet = new List<Aircraft>();
+
+    // Методы добавления самолетов разных типов
+    public FleetBuilder AddPassengerAircraft(int count)
+    {
+        var factory = new PassengerAircraftFactory();
+        // добавление указанного количества пассажирских самолетов
+        _fleet.AddRange(Enumerable.Range(0, count).Select(_ => factory.CreateAircraft()));
+        return this;
+    }
+
+    public FleetBuilder AddCargoAircraft(int count)
+    {
+        var factory = new CargoAircraftFactory();
+        _fleet.AddRange(Enumerable.Range(0, count).Select(_ => factory.CreateAircraft()));
+        return this;
+    }
+
+    public FleetBuilder AddPrivateAircraft(int count)
+    {
+        var factory = new PrivateAircraftFactory();
+        _fleet.AddRange(Enumerable.Range(0, count).Select(_ => factory.CreateAircraft()));
+        return this;
+    }
+
+    // Создание единственного экземпляра флота (Singleton)
+    public Fleet Build() => Fleet.GetInstance(_fleet);
+}
+
+// singleton для управления флотом - гарантирует единственный экземпляр флота
+public class Fleet
+{
+    // Статические поля для реализации Singleton
+    private static Fleet _instance;
+    private static readonly object _lock = new object(); // Для потокобезопасности
+
+    // Список самолетов во флоте
+    public List<Aircraft> Aircraft { get; private set; }
+
+    // Приватный конструктор для предотвращения прямого создания экземпляров
+    private Fleet(List<Aircraft> aircraft)
+    {
+        Aircraft = aircraft ?? new List<Aircraft>();
+    }
+
+    // Метод для получения единственного экземпляра флота
+    public static Fleet GetInstance(List<Aircraft> aircraft = null)
+    {
+        // Двойная проверка для потокобезопасности и эффективности
+        if (_instance == null)
+        {
+            lock (_lock)  // Синхронизация потоков
+            {
+                if (_instance == null)
+                {
+                    _instance = new Fleet(aircraft);
+                }
+            }
+        }
+        return _instance;
+    }
+
+    // Методы управления флотом
+
+    // подсчет общей вместимости всех самолетов
+    public int GetTotalCapacity() => Aircraft.Sum(a => a.Capacity);
+
+    // сортировка самолетов по дальности полета (от большей к меньшей)
+    public void SortByFlightRange()
+    {
+        Aircraft = Aircraft.OrderByDescending(a => a.FlightRange).ToList();
+    }
+
+    // поиск самолетов по расходу топлива
+    public List<Aircraft> FindAircraftByFuelConsumption(double minFc, double maxFc)
+    {
+        return Aircraft.Where(a => a.FuelConsumption >= minFc && a.FuelConsumption <= maxFc).ToList();
+    }
+
+    // Переопределение ToString для вывода информации о всех самолетах флота
+    public override string ToString()
+    {
+        return string.Join("\n", Aircraft.Select(a => a.ToString()));
+    }
+}
+
+class Program
+{
+    static void Main(string[] args)
+    {
+
+        // Создание флота с помощью Builder
+        // Добавляем 3 пассажирских, 2 грузовых и 1 частный самолет
+        var fleetBuilder = new FleetBuilder();
+        var fleet = fleetBuilder
+            .AddPassengerAircraft(3)
+            .AddCargoAircraft(2)
+            .AddPrivateAircraft(1)
+            .Build();
+
+        // Вывод информации о всех самолетах флота
+        Console.WriteLine("Флот самолетов:");
+        Console.WriteLine(fleet);
+
+        // Подсчет и вывод общей вместимости флота
+        Console.WriteLine($"\nОбщая вместимость: {fleet.GetTotalCapacity()} человек/кг");
+
+        // Сортировка самолетов по дальности полета
+        Console.WriteLine("\nСортировка по дальности полета:");
+        fleet.SortByFlightRange();
+        Console.WriteLine(fleet);
+
+        // Поиск самолетов с расходом топлива в заданном диапазоне
+        Console.WriteLine("\nСамолеты с потреблением топлива от 6 до 10 л/100км:");
+        var fuelEfficientAircraft = fleet.FindAircraftByFuelConsumption(6, 10);
+        foreach (var aircraft in fuelEfficientAircraft)
+        {
+            Console.WriteLine(aircraft);
+        }
+    }
+}
